@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/GeneradorTrajectes" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>

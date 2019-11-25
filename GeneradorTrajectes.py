@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.190313"
+Versio_modul="V_Q3.191125"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -341,7 +341,7 @@ class GeneradorTrajectes:
         
     
     def changeComboCost(self):
-        """Aquesta funció controla el canvi d'opció del comboBox del mÃ¨tode treball."""
+        """Aquesta funció controla el canvi d'opció del comboBox del mètode treball."""
         dist = u'Distancia'
         nom_metode=self.dlg.comboCost.currentText()
         if dist == nom_metode:
@@ -361,11 +361,10 @@ class GeneradorTrajectes:
         global conn
         limitUsuari = self.dlg.SB_camins.value()
         count = 'select count(*) from "public".\"' + self.dlg.comboCapaDesti.currentText() + '\";'
-        try:
-            cur.execute(count)
-            vect = cur.fetchall()
-        except:
-            print ("ERROR SELECT COUNT")
+        
+        cur.execute(count)
+        vect = cur.fetchall()
+        
         if (limitUsuari > vect[0][0]):
             return vect[0][0]
         else:
@@ -506,7 +505,7 @@ class GeneradorTrajectes:
             self.barraEstat_connectat()
             return
         
-        
+        Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
         textBox = u'INICI DE LA CERCA DE CAMINS:\n'
         self.dlg.text_info.setText(textBox)
         self.MouText()
@@ -522,8 +521,15 @@ class GeneradorTrajectes:
         try:
             cur.execute(create)
             conn.commit()
-        except:
-            print ("CREATE TABLE  SegmentsFinals ERROR")
+        except Exception as ex:
+            print ("Error CREATE Taula de camins")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error CREATE Taula de camins")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            return
             
         sql_xarxa = 'drop table IF EXISTS "Xarxa_Prova";\n'
         sql_xarxa += 'create local temp table "Xarxa_Prova" as  (select * from "public"."SegmentsXarxaCarrers");\n'
@@ -537,10 +543,17 @@ class GeneradorTrajectes:
         try:
             cur.execute(sql_xarxa)
             conn.commit()
-        except:
-            print ("ERROR SQL_XARXA")
+        except Exception as ex:
+            print ("Error CREATE Xarxa_Prova")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error CREATE Xarxa_Prova")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            return
             
-        if self.dlg.comboCapaOrigen.currentText() != 'dinterilla':
+        if self.dlg.comboCapaOrigen.currentText() != 'dintreilla':
             select = 'select "id" as "idInici" from "public"."'+self.dlg.comboCapaOrigen.currentText()+'" order by 1;'
         else:
             select = 'select "Carrer_Num_Bis" as "idInici" from "public"."'+self.dlg.comboCapaOrigen.currentText()+'" order by 1;'
@@ -548,8 +561,15 @@ class GeneradorTrajectes:
         try:
             cur.execute(select)
             resultat = cur.fetchall()
-        except:
-            print ("ERROR: SELECT Origens")
+        except Exception as ex:
+            print ("Error SELECT inici")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error SELECT inici")
+            conn.rollback()
+            self.eliminaTaulesCalcul(Fitxer)
+            return
             
             
             
@@ -667,11 +687,31 @@ class GeneradorTrajectes:
                 
             except: # Ordenación lenta pero segura
                 print("Error ordenación: "+str(listFeaturesAllVlayers[0]["Carrer_Num_Bis"])+', '+str(listFeaturesAllVlayers[0]["cost"]))
-                listFeaturesAllVlayers = self.mergeSort(listFeaturesAllVlayers)
+                try:
+                    listFeaturesAllVlayers = self.mergeSort(listFeaturesAllVlayers)
+                except Exception as ex:
+                    print ("Error ordenació")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error ordenació.\n Reinicia el mòdul i probablement s'hagi solucionat quan ho tornis a executar.")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                
             
             '''Añadir a una lista el número de features indicadas por el usuario con "limit"'''
-            limit = 3#self.getLimit()
+            try:    
+                limit = self.getLimit()
+            except Exception as ex:
+                print ("Error getLimit")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error getLimit")
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                return
             listResultadoFinal = []
             nomAux = None
             for x in range(len(listFeaturesAllVlayers)):
@@ -718,8 +758,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(drop)
                     conn.commit()
-                except:
-                    print ("DROP TABLE ERROR 1")
+                except Exception as ex:
+                    print ("Error DROP Taula de camins")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error DROP Taula de camins")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
             
                 error = QgsVectorLayerExporter.exportLayer(LayerCamins, 'table="GTT"."'+self.dlg.txt_nomTaula.text()+'" (geom) '+uri.connectionInfo(), "postgres", listVlayers[1].crs(), False)
                 if error[0] != 0:
@@ -743,8 +790,15 @@ class GeneradorTrajectes:
             try:
                 cur.execute(drop)
                 conn.commit()
-            except:
-                print ("DROP TABLE ERROR 1")
+            except Exception as ex:
+                print ("Error CREATE Taula de proximitat")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error CREATE Taula de proximitat")
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                return
             
             create = 'CREATE TABLE "GTT".\"'+self.dlg.txt_nomProximitat.text()+'\" (\n'
             create += "\t\"Carrer_Num_Bis\" varchar,\n"
@@ -758,10 +812,16 @@ class GeneradorTrajectes:
             
             try:
                 cur.execute(create)
-                conn.commit()
-            except:
-                print ("CREATE TABLE "+self.dlg.txt_nomProximitat.text()+" ERROR")        
-            
+                conn.commit()  
+            except Exception as ex:
+                print ("Error CREATE Taula de proximitat")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error CREATE Taula de proximitat")
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                return
             '''Inserción de los datos en Taula de proximitat'''             
             try:
                 x=0
@@ -782,18 +842,22 @@ class GeneradorTrajectes:
                     insert += ');\n'
                     QApplication.processEvents()                    
                     cur.execute(insert)
-            except:                              
-                conn.commit()                
-            
-                print ("INSERT TABLE "+self.dlg.txt_nomProximitat.text()+" ERROR")
-            
+            except Exception as ex:
+                print ("Error INSERT Taula de proximitat")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error INSERT Taula de proximitat")
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                return
             self.dlg.progressBar.setValue(100)
             QApplication.processEvents()      
             
         else:    
+            #Cálculo en el servidor pendiente de implementar
             for i in range(0,len(resultat)):
                 idInici = resultat[i][0]
-                Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
                 Hora=datetime.datetime.now().strftime("%H:%M:%S:%f")
                 textBox += u'CAMÍ Nº ' + str(i+1) + u': ' + Hora + u'\n'
                 self.dlg.text_info.setText(textBox)
@@ -805,8 +869,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(drop)
                     conn.commit()
-                except:
-                    print ("DROP TABLE ERROR 1")
+                except Exception as ex:
+                    print ("Error DROP NPoints")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error DROP NPoints")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 create = 'CREATE TABLE NPoints_'+Fitxer+' (\n'
                 create += "\tpid    serial primary key,\n"
@@ -818,8 +889,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(create)
                     conn.commit()
-                except:
-                    print ("CREATE TABLE  NPoints ERROR")
+                except Exception as ex:
+                    print ("Error CREATE NPoints")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error CREATE NPoints")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
                 '''
                 #    4.2 S'afegeixen els punts necessaris a la taula
@@ -832,11 +910,18 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(insert)
                     conn.commit()
-                except:
-                    print ("Insert Points  NPoints ERROR")
+                except Exception as ex:
+                    print ("Error INSERT NPoints")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error INSERT NPoints")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 '''
-                #    4.3 S'afegeix el id del tram al que estan mÃ©s prÃ²xims els punts, els punts projectats sobre el graf 
+                #    4.3 S'afegeix el id del tram al que estan més próxims els punts, els punts projectats sobre el graf 
                 #    i la fracció de segment a on estant 
                 '''
                 update = 'UPDATE NPoints_'+Fitxer+' set "edge_id"=tram_proper."tram_id" from (SELECT distinct on(Poi."pid") Poi."pid" As Punt_id,Sg."id" as Tram_id, ST_Distance(Sg."the_geom",Poi."the_geom")  as dist FROM "Xarxa_Prova" as Sg,NPoints_'+Fitxer+' AS Poi ORDER BY  Poi."pid",ST_Distance(Sg."the_geom",Poi."the_geom"),Sg."id") tram_proper where NPoints_'+Fitxer+'."pid"=tram_proper."punt_id";\n'
@@ -844,16 +929,33 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(update)
                     conn.commit()
-                except:
-                    print ("Update Points  NPoints ERROR")
+                except Exception as ex:
+                    print ("Error UPDATE NPoints")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error UPDATE NPoints")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
                 '''
                 #    4.4 Es fa una consulta per poder generar una sentencia SQL que faci la cerca de
-                #    tots els camins mÃ©s curts a tots el punts necessaris
+                #    tots els camins més curts a tots el punts necessaris
                 '''
                 select = 'select * from NPoints_'+Fitxer+' order by pid'
-                cur.execute(select)
-                vec = cur.fetchall() 
+                try:
+                    cur.execute(select)
+                    vec = cur.fetchall()
+                except Exception as ex:
+                    print ("Error SELECT NPoints")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT NPoints")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return 
                 create = 'create local temp table "Resultat" as SELECT * FROM (\n'
                 for x in range (0,len(vec)):
                     if x < len(vec) and x >= 2:
@@ -872,8 +974,15 @@ class GeneradorTrajectes:
                     select="SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' and table_name = '"+ self.dlg.comboCapaDesti.currentText() +"'and column_name like 'Nom%';"
                     cur.execute(select)
                     nomCamp = cur.fetchall()
-                except:
-                    print ("Error SELECT CAMP NOM")
+                except Exception as ex:
+                    print ("Error SELECT camp nom")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT camp nom")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
     
                 '''
                 #    5. Destrucció i creació de la taula on figuren tots els camins possibles
@@ -882,14 +991,28 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(drop)
                     conn.commit()
-                except:
-                    print ("DROP TABLE ERROR 2")
+                except Exception as ex:
+                    print ("Error DROP Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error DROP Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 try:
                     cur.execute(create)
                     conn.commit()
-                except:
-                    print ("CREATE TABLE Resultat global ERROR")
+                except Exception as ex:
+                    print ("Error CREATE Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error CREATE Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 '''
                 #    6. Destrucció i creació de la taula "Segments finals" on figuren tots els camins possibles que són prinicipi i/o final
@@ -899,8 +1022,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(drop)
                     conn.commit()
-                except:
-                    print ("DROP TABLE ERROR 1")
+                except Exception as ex:
+                    print ("Error DROP SegmentsFinals")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error DROP SegmentsFinals")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 create = "CREATE local temp TABLE \"SegmentsFinals\" (\n"
                 create += "\trouteid int8,\n"
@@ -912,9 +1042,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(create)
                     conn.commit()
-                except:
-                    print ("CREATE TABLE  SegmentsFinals ERROR")
-                    
+                except Exception as ex:
+                    print ("Error CREATE SegmentsFinals")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error CREATE SegmentsFinals")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 '''
                 #    6.1 Query per seleccionar els segments que són inici i final
                 '''
@@ -923,8 +1059,15 @@ class GeneradorTrajectes:
                     cur.execute(select)
                     vec = cur.fetchall()
                     conn.commit()
-                except:
-                    print ("SELECT Resultat ERROR")
+                except Exception as ex:
+                    print ("Error SELECT Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 insert = ''
                 for x in range (len(vec)):
                     if vec[x][1] < 0:
@@ -935,19 +1078,33 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(insert)
                     conn.commit()
-                except:
-                    print ("INSERT TABLE  SegmentsFinals ERROR")
+                except Exception as ex:
+                    print ("Error INSERT SegmentsFinals")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error INSERT SegmentsFinals")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
                 '''
-                #    6.2 UPDATE per poder afegir la fracció en quÃ¨ es troba el punt sobre el segment
+                #    6.2 UPDATE per poder afegir la fracció en què es troba el punt sobre el segment
                 '''
                 select = 'select routeid, edge, "ordreTram" from "SegmentsFinals" order by routeid, "ordreTram";'
                 try:
                     cur.execute(select)
                     vec = cur.fetchall()
                     conn.commit()
-                except:
-                    print ("SELECT SegmentsFinals ERROR")
+                except Exception as ex:
+                    print ("Error SELECT Resultat 2")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT Resultat 2")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
         
                 update = ''
                 for x in range(len(vec)):
@@ -962,8 +1119,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(update)
                     conn.commit()
-                except:
-                    print ("UPDATE TABLE SegmentsFinals ERROR")
+                except Exception as ex:
+                    print ("Error UPDATE SegmentsFinals")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error UPDATE SegmentsFinals")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
                 '''
                 #    6.3 Query per escollir i afegir el tros de tram que correspon a cada inici i final 
@@ -974,8 +1138,15 @@ class GeneradorTrajectes:
                     cur.execute(select)
                     vec = cur.fetchall()
                     conn.commit()
-                except:
-                    print ("SELECT SegmentsFinals ERROR")
+                except Exception as ex:
+                    print ("Error SELECT SegmentsFinals")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT SegmentsFinals")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 updateSegment = ''
                 for x in range(len(vec)):
                     ordre = vec[x][4]
@@ -987,8 +1158,15 @@ class GeneradorTrajectes:
                         cur.execute(selectTouch)
                         resposta = cur.fetchall()
                         conn.commit()
-                    except:
-                        print ("SELECT TOUCH ERROR")
+                    except Exception as ex:
+                        print ("Error SELECT Touch")
+                        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                        message = template.format(type(ex).__name__, ex.args)
+                        print (message)
+                        QMessageBox.information(None, "Error", "Error SELECT Touch")
+                        conn.rollback()
+                        self.eliminaTaulesCalcul(Fitxer)
+                        return
                     if edgeAnt != -1:   
                         if resposta[0][0]:
                             updateSegment += 'update "SegmentsFinals" sf set "cutEdge" = ST_Line_Substring(s."the_geom",0,'+str(fraction)+') from "Xarxa_Prova" s where sf."edge"='+str(edge)+' and s."id"='+str(edge)+' and sf."routeid" = '+str(vec[x][0])+';\n'
@@ -1008,8 +1186,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(updateSegment)
                     conn.commit()
-                except:
-                    print ("UPDATE TABLE SegmentsFinals Geometries ERROR")
+                except Exception as ex:
+                    print ("Error UPDATE SegmentsFinals Geometries")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error UPDATE SegmentsFinals Geometries")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 '''
                 #    7. S'afegeix i s'actualitza el camp de geometria a la taula resultat
@@ -1020,8 +1205,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(alter)
                     conn.commit()
-                except:
-                    print ("ALTER and UPDATE TABLE Resultat Geometries ERROR")
+                except Exception as ex:
+                    print ("Error ALTER UPDATE Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error ALTER UPDATE Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
         
                 '''
                 #    8. UPDATE per actualitzar els trams retallats a la taula 'Resultat'
@@ -1030,22 +1222,45 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(update)
                     conn.commit()
-                except:
-                    print ("ALTER and UPDATE TABLE Resultat Geometries ERROR")
-        
+                except Exception as ex:
+                    print ("Error UPDATE Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error UPDATE Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 
                 '''
-                #    9. Seleccio dels N-camins mÃ©s proxims al domicili indicat per tal de presentar els resultats
+                #    9. Seleccio dels N-camins més proxims al domicili indicat per tal de presentar els resultats
                 #    en el quadre de la interficie del modul
                 '''
-                limit = self.getLimit()
+                try:
+                    limit = self.getLimit()
+                except Exception as ex:
+                    print ("Error getLimit")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error getLimit")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                 select = 'select e."'+ nomCamp[0][0] +'" as NomEntitat, r.agg_cost as Cost, r.entitatID from "Resultat" r  join "' + self.dlg.comboCapaDesti.currentText() + '" e on r.entitatID = e.id where  r.edge = -1 order by 2 asc limit ' + str(limit) + ';'
                 try:
                     cur.execute(select)
                     vec = cur.fetchall()
                     conn.commit()
-                except:
-                    print ("SELECT resultats ERROR")
+                except Exception as ex:
+                    print ("Error SELECT Resultat")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error SELECT Resultat")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
                 '''
                 #    10. Drop i Create d'una sentencia SQL per obtenir els trams junts per a cada camí optim escollit
@@ -1070,8 +1285,15 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(createTrams)
                     conn.commit()
-                except:
-                    print ("create trams ERROR")
+                except Exception as ex:
+                    print ("Error CREATE NousTrams")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error CREATE NousTrams")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
                     
     
                 insert = 'INSERT INTO "ResultatFinal" ("idInici", id, entitatid, "NomEntitat",agg_cost, the_geom) (select \''+ str(idInici) +'\' as "idInici", row_number() OVER() AS "id", * from "NousTrams_'+Fitxer+'");'
@@ -1079,27 +1301,18 @@ class GeneradorTrajectes:
                 try:
                     cur.execute(insert)
                     conn.commit()
-                except:
-                    print ("Error SELECT CAMP NOM etiquetes")
-                    
-                drop = 'DROP TABLE IF EXISTS "Resultat";\n'
-                drop += 'DROP TABLE IF EXISTS "NousTrams_'+Fitxer+'";\n'
-                drop += 'DROP TABLE IF EXISTS NPoints_'+Fitxer+';\n'
-                drop += 'DROP TABLE IF EXISTS "SegmentsFinals";\n'
-        
-                try:
-                    cur.execute(drop)
-                    conn.commit()
-                except:
-                    print ("Error DROP final")
+                except Exception as ex:
+                    print ("Error INSERT ResultatFinal")
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print (message)
+                    QMessageBox.information(None, "Error", "Error INSERT ResultatFinal")
+                    conn.rollback()
+                    self.eliminaTaulesCalcul(Fitxer)
+                    return
         
         
-        drop = 'DROP TABLE IF EXISTS "Xarxa_Prova";\n'
-        try:
-            cur.execute(drop)
-            conn.commit()
-        except:
-            print ("Error DROP 2 final")
+        self.eliminaTaulesCalcul(Fitxer)
             
         textBox += u'FINAL DE LA CERCA\n'
         textBox += u'Durada: '+str(int(time.time()-a))+' s.\n'
@@ -1109,6 +1322,33 @@ class GeneradorTrajectes:
         QApplication.processEvents()
         self.barraEstat_connectat()
                 
+                
+    def eliminaTaulesCalcul(self,Fitxer):
+        global cur
+        global conn
+        try:
+            cur.execute('DROP TABLE IF EXISTS "Resultat";\n') 
+            cur.execute('DROP TABLE IF EXISTS "NousTrams_'+Fitxer+'";\n')
+            cur.execute('DROP TABLE IF EXISTS NPoints_'+Fitxer+';\n')
+            cur.execute('DROP TABLE IF EXISTS "SegmentsFinals";\n')
+            cur.execute('DROP TABLE IF EXISTS "Xarxa_Prova";\n')
+            
+            conn.commit()
+        except Exception as ex:
+            print("Error DROP final")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error DROP final")
+            conn.rollback()
+            self.bar.clearWidgets()
+            self.dlg.Progres.setValue(0)
+            self.dlg.Progres.setVisible(False)
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            
+                        
+    
     def MouText(self):
         newCursor=QTextCursor(self.dlg.text_info.document())
         newCursor.movePosition(QTextCursor.End)
@@ -1173,35 +1413,40 @@ class GeneradorTrajectes:
                 llista = cur.fetchall()
                 self.ompleCombos(self.dlg.comboCapaDesti, llista, u'Selecciona una entitat', True)
                 
-            except:
+            except Exception as ex:
                 self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #ff7f7f')
                 self.dlg.lblEstatConn.setText(u'Error: Hi ha algun camp erroni.')
                 print ("I am unable to connect to the database")
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print (message)
+                QMessageBox.information(None, "Error", "Error connexio")
+                return
            
         else:
             aux = False
             self.barraEstat_noConnectat()
     
     def barraEstat_processant(self):
-        '''Aquesta funció canvia l'aparenÃ§a de la barra inferior a "Processant"'''
+        '''Aquesta funció canvia l'aparença de la barra inferior a "Processant"'''
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: rgb(255, 125, 155)')
         self.dlg.lblEstatConn.setText(u"Processant...")
         QApplication.processEvents()
         
     def barraEstat_noConnectat(self):
-        '''Aquesta funció canvia l'aparenÃ§a de la barra inferior a "No connectat"'''
+        '''Aquesta funció canvia l'aparença de la barra inferior a "No connectat"'''
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #FFFFFF')
         self.dlg.lblEstatConn.setText(u'No connectat')
         QApplication.processEvents()
         
     def barraEstat_connectat(self):
-        '''Aquesta funció canvia l'aparenÃ§a de la barra inferior a "Connectat"'''
+        '''Aquesta funció canvia l'aparença de la barra inferior a "Connectat"'''
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
         self.dlg.lblEstatConn.setText(u'Connectat')
         QApplication.processEvents()
         
     def barraEstat_connectant(self):
-        '''Aquesta funció canvia l'aparenÃ§a de la barra inferior a "Connectant"'''
+        '''Aquesta funció canvia l'aparença de la barra inferior a "Connectant"'''
         self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #ffff7f')
         self.dlg.lblEstatConn.setText(u'Connectant...')
         QApplication.processEvents()

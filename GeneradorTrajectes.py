@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.191125"
+Versio_modul="V_Q3.191128"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -333,6 +333,7 @@ class GeneradorTrajectes:
         self.dlg.comboCapaOrigen.clear()
         self.dlg.txt_nomTaula.clear()
         self.dlg.txt_nomProximitat.clear()
+        self.dlg.comboGraf.clear()
         self.dlg.text_info.setText('')
         self.dlg.progressBar.setValue(0)
         self.dlg.chk_Local.setChecked(True)
@@ -369,7 +370,33 @@ class GeneradorTrajectes:
             return vect[0][0]
         else:
             return limitUsuari
-        
+    
+    def on_Change_ComboGraf(self, state):
+        """
+        En el moment en que es modifica la opcio escollida 
+        del combo o desplegable de la capa de punts,
+        automÃ ticament comprova els camps de la taula escollida.
+        """
+        try:
+            capa=self.dlg.comboGraf.currentText()
+            if capa != "":
+                if capa != 'Selecciona una entitat':
+                    if (self.grafValid(capa)):
+                        pass
+                    else:
+                        QMessageBox.information(None, "Error", 'El graf seleccionat no té la capa de nusos corresponent.\nEscolliu un altre.')
+        except Exception as ex:
+            print ("Error Graf seleccionat")
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print (message)
+            QMessageBox.information(None, "Error", "Error Graf seleccionat")
+            conn.rollback()
+            self.bar.clearWidgets()
+            self.dlg.lblEstatConn.setText('Connectat')
+            self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            return "ERROR"
+    
     def controlErrorsInput(self):
         '''
         Aquesta funció s'encarrega de controlar que quan comenci el càlcul
@@ -390,6 +417,8 @@ class GeneradorTrajectes:
             errors.append(u'No hi ha nom per la taula de destí')
         if self.dlg.txt_nomProximitat.text() == u'':
             errors.append(u'No hi ha nom per la taula de proximitat')
+        if self.dlg.comboGraf.currentText() == 'Selecciona una entitat':
+            errors.append("No hi ha seleccionada cap capa de xarxa")
         return errors
     
     
@@ -532,7 +561,7 @@ class GeneradorTrajectes:
             return
             
         sql_xarxa = 'drop table IF EXISTS "Xarxa_Prova";\n'
-        sql_xarxa += 'create local temp table "Xarxa_Prova" as  (select * from "public"."SegmentsXarxaCarrers");\n'
+        sql_xarxa += 'create local temp table "Xarxa_Prova" as  (select * from "public"."'+self.dlg.comboGraf.currentText()+'");\n'
         if self.dlg.comboCost.currentText() == 'Distancia':
             sql_xarxa += 'update "Xarxa_Prova" set "cost"="LONGITUD_SEGMENT", "reverse_cost"="LONGITUD_SEGMENT";'
         else:
@@ -596,7 +625,7 @@ class GeneradorTrajectes:
             end_lyr = QgsVectorLayer(uri.uri(False), "desti", "postgres")
             QApplication.processEvents()
             
-            sql_xarxa='SELECT * FROM "public".\"SegmentsXarxaCarrers\"'
+            sql_xarxa='SELECT * FROM "public".\"'+self.dlg.comboGraf.currentText()+'\"'
             QApplication.processEvents()
             uri.setDataSource("","("+sql_xarxa+")","the_geom","","id")
             QApplication.processEvents()
@@ -609,6 +638,9 @@ class GeneradorTrajectes:
             if(crs.authid() != self.iface.mapCanvas().mapSettings().destinationCrs().authid()):
                 QMessageBox.information(None, "Error", "\nEls CRS no coincideixen:\n-CRS del projecte: "+self.iface.mapCanvas().mapSettings().destinationCrs().authid()+"\n-CRS de la capa dels punts d'origen: "+crs.authid())
                 self.barraEstat_connectat()
+                conn.rollback()
+                self.eliminaTaulesCalcul(Fitxer)
+                self.dlg.text_info.setText('')
                 return
             #print(self.iface.mapCanvas().mapSettings().destinationCrs().authid())# == EPSG:25831
             valorProgreso = 0
@@ -1375,6 +1407,7 @@ class GeneradorTrajectes:
         select = 'Selecciona connexió'
         self.dlg.comboCapaDesti.clear()
         self.dlg.comboCapaOrigen.clear()
+        self.dlg.comboGraf.clear()
         nom_conn=self.dlg.comboConnexio.currentText()
         if nom_conn != select:
             aux = True
@@ -1412,6 +1445,11 @@ class GeneradorTrajectes:
                 cur.execute(sql)
                 llista = cur.fetchall()
                 self.ompleCombos(self.dlg.comboCapaDesti, llista, u'Selecciona una entitat', True)
+                
+                sql2 = "select f_table_name from geometry_columns where ((type = 'MULTILINESTRING' or type = 'LINESTRING') and f_table_schema ='public') order by 1"
+                cur.execute(sql2)
+                llista2 = cur.fetchall()
+                self.ompleCombos(self.dlg.comboGraf, llista2, 'Selecciona una entitat', True)
                 
             except Exception as ex:
                 self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #ff7f7f')

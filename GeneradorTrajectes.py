@@ -26,7 +26,7 @@ import processing
 from os.path import expanduser
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from PyQt5.QtWidgets import QAction,QMessageBox,QTableWidgetItem, QApplication
+from PyQt5.QtWidgets import QAction,QMessageBox,QTableWidgetItem, QApplication,QToolBar
 from qgis.core import QgsMapLayer
 from qgis.core import QgsDataSourceUri
 from qgis.core import QgsVectorLayer
@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.191128"
+Versio_modul="V_Q3.200108"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -136,8 +136,16 @@ class GeneradorTrajectes:
         self.actions = []
         self.menu = self.tr(u'&CCU')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'CCU')
-        self.toolbar.setObjectName(u'Generador de Trajectes')
+        #self.toolbar = self.iface.addToolBar(u'CCU')
+        #self.toolbar.setObjectName(u'Generador de Trajectes')
+        trobat=False
+        for x in iface.mainWindow().findChildren(QToolBar,'CCU'): 
+            self.toolbar = x
+            trobat=True
+        
+        if not trobat:
+            self.toolbar = self.iface.addToolBar('CCU')
+            self.toolbar.setObjectName('CCU')
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -247,9 +255,10 @@ class GeneradorTrajectes:
             self.iface.removePluginMenu(
                 self.tr(u'&Generador de trajectes'),
                 action)
-            self.iface.removeToolBarIcon(action)
+            #self.iface.removeToolBarIcon(action)
+            self.toolbar.removeAction(action)
         # remove the toolbar
-        del self.toolbar
+        #del self.toolbar
 
 
     def on_click_Sortir(self):

@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.200108"
+Versio_modul="V_Q3.200114"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -253,7 +253,7 @@ class GeneradorTrajectes:
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&Generador de trajectes'),
+                self.tr(u'&CCU'),
                 action)
             #self.iface.removeToolBarIcon(action)
             self.toolbar.removeAction(action)

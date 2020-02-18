@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.200114"
+Versio_modul="V_Q3.200218"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -529,6 +529,7 @@ class GeneradorTrajectes:
     
     def on_click_Inici(self):
         #Inici de l'execució
+        self.dlg.setEnabled(False)
         self.barraEstat_processant()
         self.dlg.text_info.clear()
         a=time.time()
@@ -541,6 +542,7 @@ class GeneradorTrajectes:
                 llista += (u"- "+llistaErrors[i] + u'\n')
             QMessageBox.information(None, "Error", llista)
             self.barraEstat_connectat()
+            self.dlg.setEnabled(True)
             return
         
         Fitxer=datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -567,6 +569,7 @@ class GeneradorTrajectes:
             QMessageBox.information(None, "Error", "Error CREATE Taula de camins")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.dlg.setEnabled(True)
             return
             
         sql_xarxa = 'drop table IF EXISTS "Xarxa_Prova";\n'
@@ -589,6 +592,7 @@ class GeneradorTrajectes:
             QMessageBox.information(None, "Error", "Error CREATE Xarxa_Prova")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.dlg.setEnabled(True)
             return
             
         if self.dlg.comboCapaOrigen.currentText() != 'dintreilla':
@@ -607,6 +611,7 @@ class GeneradorTrajectes:
             QMessageBox.information(None, "Error", "Error SELECT inici")
             conn.rollback()
             self.eliminaTaulesCalcul(Fitxer)
+            self.dlg.setEnabled(True)
             return
             
             
@@ -650,6 +655,7 @@ class GeneradorTrajectes:
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
                 self.dlg.text_info.setText('')
+                self.dlg.setEnabled(True)
                 return
             #print(self.iface.mapCanvas().mapSettings().destinationCrs().authid())# == EPSG:25831
             valorProgreso = 0
@@ -735,9 +741,10 @@ class GeneradorTrajectes:
                     template = "An exception of type {0} occurred. Arguments:\n{1!r}"
                     message = template.format(type(ex).__name__, ex.args)
                     print (message)
-                    QMessageBox.information(None, "Error", "Error ordenació.\n Reinicia el mòdul i probablement s'hagi solucionat quan ho tornis a executar.")
+                    QMessageBox.information(None, "Error", "Error ordenació.\n Reinicia QGIS i probablement s'hagi solucionat quan ho tornis a executar.")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                
             
@@ -752,6 +759,7 @@ class GeneradorTrajectes:
                 QMessageBox.information(None, "Error", "Error getLimit")
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
+                self.dlg.setEnabled(True)
                 return
             listResultadoFinal = []
             nomAux = None
@@ -807,6 +815,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error DROP Taula de camins")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
             
                 error = QgsVectorLayerExporter.exportLayer(LayerCamins, 'table="GTT"."'+self.dlg.txt_nomTaula.text()+'" (geom) '+uri.connectionInfo(), "postgres", listVlayers[1].crs(), False)
@@ -839,6 +848,7 @@ class GeneradorTrajectes:
                 QMessageBox.information(None, "Error", "Error CREATE Taula de proximitat")
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
+                self.dlg.setEnabled(True)
                 return
             
             create = 'CREATE TABLE "GTT".\"'+self.dlg.txt_nomProximitat.text()+'\" (\n'
@@ -862,6 +872,7 @@ class GeneradorTrajectes:
                 QMessageBox.information(None, "Error", "Error CREATE Taula de proximitat")
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
+                self.dlg.setEnabled(True)
                 return
             '''Inserción de los datos en Taula de proximitat'''             
             try:
@@ -891,6 +902,7 @@ class GeneradorTrajectes:
                 QMessageBox.information(None, "Error", "Error INSERT Taula de proximitat")
                 conn.rollback()
                 self.eliminaTaulesCalcul(Fitxer)
+                self.dlg.setEnabled(True)
                 return
             self.dlg.progressBar.setValue(100)
             QApplication.processEvents()      
@@ -918,6 +930,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error DROP NPoints")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 create = 'CREATE TABLE NPoints_'+Fitxer+' (\n'
@@ -938,6 +951,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error CREATE NPoints")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
                 '''
@@ -959,6 +973,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error INSERT NPoints")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 '''
@@ -978,6 +993,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error UPDATE NPoints")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
                 '''
@@ -996,6 +1012,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT NPoints")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return 
                 create = 'create local temp table "Resultat" as SELECT * FROM (\n'
                 for x in range (0,len(vec)):
@@ -1023,6 +1040,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT camp nom")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
     
                 '''
@@ -1040,6 +1058,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error DROP Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 try:
@@ -1053,6 +1072,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error CREATE Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 '''
@@ -1071,6 +1091,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error DROP SegmentsFinals")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 create = "CREATE local temp TABLE \"SegmentsFinals\" (\n"
@@ -1091,6 +1112,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error CREATE SegmentsFinals")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 '''
                 #    6.1 Query per seleccionar els segments que són inici i final
@@ -1108,6 +1130,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 insert = ''
                 for x in range (len(vec)):
@@ -1127,6 +1150,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error INSERT SegmentsFinals")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
                 '''
@@ -1145,6 +1169,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT Resultat 2")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
         
                 update = ''
@@ -1168,6 +1193,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error UPDATE SegmentsFinals")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
                 '''
@@ -1187,6 +1213,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT SegmentsFinals")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 updateSegment = ''
                 for x in range(len(vec)):
@@ -1207,6 +1234,7 @@ class GeneradorTrajectes:
                         QMessageBox.information(None, "Error", "Error SELECT Touch")
                         conn.rollback()
                         self.eliminaTaulesCalcul(Fitxer)
+                        self.dlg.setEnabled(True)
                         return
                     if edgeAnt != -1:   
                         if resposta[0][0]:
@@ -1235,6 +1263,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error UPDATE SegmentsFinals Geometries")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 '''
@@ -1254,6 +1283,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error ALTER UPDATE Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
         
                 '''
@@ -1271,6 +1301,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error UPDATE Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 
                 '''
@@ -1287,6 +1318,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error getLimit")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                 select = 'select e."'+ nomCamp[0][0] +'" as NomEntitat, r.agg_cost as Cost, r.entitatID from "Resultat" r  join "' + self.dlg.comboCapaDesti.currentText() + '" e on r.entitatID = e.id where  r.edge = -1 order by 2 asc limit ' + str(limit) + ';'
                 try:
@@ -1301,6 +1333,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error SELECT Resultat")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
                 '''
@@ -1334,6 +1367,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error CREATE NousTrams")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
                     
     
@@ -1350,6 +1384,7 @@ class GeneradorTrajectes:
                     QMessageBox.information(None, "Error", "Error INSERT ResultatFinal")
                     conn.rollback()
                     self.eliminaTaulesCalcul(Fitxer)
+                    self.dlg.setEnabled(True)
                     return
         
         
@@ -1362,6 +1397,7 @@ class GeneradorTrajectes:
         
         QApplication.processEvents()
         self.barraEstat_connectat()
+        self.dlg.setEnabled(True)
                 
                 
     def eliminaTaulesCalcul(self,Fitxer):
@@ -1387,6 +1423,7 @@ class GeneradorTrajectes:
             self.dlg.Progres.setVisible(False)
             self.dlg.lblEstatConn.setText('Connectat')
             self.dlg.lblEstatConn.setStyleSheet('border:1px solid #000000; background-color: #7fff7f')
+            self.dlg.setEnabled(True)
             
                         
     

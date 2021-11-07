@@ -10,7 +10,7 @@
 name=Generador de Trajectes
 qgisMinimumVersion=3.0
 description=GeneradorTrajectes
-version=Q3.200218
+version=Q3.211105
 author=Josep Lopez
 email=jlopez@tecnocampus.cat
 

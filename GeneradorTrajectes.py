@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.200218"
+Versio_modul="V_Q3.211105"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -130,6 +130,8 @@ class GeneradorTrajectes:
         self.dlg.bt_inici.clicked.connect(self.on_click_Inici)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
         self.dlg.comboCost.currentIndexChanged.connect(self.changeComboCost)
+        self.dlg.bt_ReloadLeyendaOrigen.clicked.connect(self.cerca_elements_Leyenda)
+        self.dlg.bt_ReloadLeyendaDestino.clicked.connect(self.cerca_elements_Leyenda)
 
 
         # Declare instance attributes
@@ -301,7 +303,7 @@ class GeneradorTrajectes:
                 combo.setCurrentIndex(0)
         combo.blockSignals (False)
 
-    def ompleCombos(self, combo, llista, predef, sort):
+    def ompleCombos(self, combo, llista, predef, sort, leyenda=False):
         """Aquesta funció omple els combos que li passem per paràmetres"""
         combo.blockSignals (True)
         combo.clear()
@@ -309,9 +311,15 @@ class GeneradorTrajectes:
         predefInList = None
         for elem in llista:
             try:
-                item = QStandardItem(unicode(elem[0]))
+                if not leyenda:
+                    item = QStandardItem(unicode(elem[0]))
+                else:
+                    item = QStandardItem(unicode(elem))
             except TypeError:
-                item = QStandardItem(str(elem[0]))
+                if not leyenda:
+                    item = QStandardItem(str(elem[0]))
+                else:
+                    item = QStandardItem(str(elem))
             model.appendRow(item)
             if elem == predef:
                 predefInList = elem
@@ -347,6 +355,7 @@ class GeneradorTrajectes:
         self.dlg.progressBar.setValue(0)
         self.dlg.chk_Local.setChecked(True)
         self.dlg.chk_Local.setEnabled(False)
+        self.cerca_elements_Leyenda()
 
         
     
@@ -379,7 +388,34 @@ class GeneradorTrajectes:
             return vect[0][0]
         else:
             return limitUsuari
-    
+
+    def cerca_elements_Leyenda(self):
+        try:  # Accedir als elements de la llegenda que siguin de tipus punt.
+            auxOrigen = []
+            auxDesti = []
+            layers = QgsProject.instance().mapLayers().values()
+            for layer in layers:
+                #print(*layer.fields())
+                if layer.type() == QgsMapLayer.VectorLayer:
+                    if layer.wkbType() == QgsWkbTypes.Point:
+                        auxOrigen.append(layer.name())
+                        for field in layer.fields():
+                            if field.name()[0:3] == "Nom":
+                                auxDesti.append(layer.name())
+                                break
+
+            self.ompleCombos(self.dlg.comboCapaOrigenLeyenda, auxOrigen, 'Selecciona una entitat', True, True)
+
+            self.ompleCombos(self.dlg.comboCapaDestiLeyenda, auxDesti, 'Selecciona una entitat', True, True)
+        except Exception as ex:
+            missatge = "Error al afegir els elements de la llegenda"
+            print(missatge)
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print(message)
+            QMessageBox.information(None, "Error", missatge)
+            return
+
     def on_Change_ComboGraf(self, state):
         """
         En el moment en que es modifica la opcio escollida 
@@ -414,13 +450,21 @@ class GeneradorTrajectes:
         errors = []
         if self.dlg.comboConnexio.currentText() == u'Selecciona connexió':
             errors.append(u"No hi ha connexió")
-        if self.dlg.comboCapaOrigen.currentText() == u'':
+        if self.dlg.comboCapaOrigen.currentText() == u'' and self.dlg.tabWidget_Origen.currentIndex() == 0:
             errors.append(u'No hi ha cap capa d\'origen disponible')
-        if self.dlg.comboCapaOrigen.currentText() == u'Selecciona una entitat':
+        if self.dlg.comboCapaOrigen.currentText() == u'Selecciona una entitat' and self.dlg.tabWidget_Origen.currentIndex() == 0:
             errors.append(u'No hi ha cap capa d\'origen seleccionada')
-        if self.dlg.comboCapaDesti.currentText() == u'':
+        if self.dlg.comboCapaOrigenLeyenda.currentText() == u'' and self.dlg.tabWidget_Origen.currentIndex() == 1:
+            errors.append(u'No hi ha cap capa d\'origen disponible')
+        if self.dlg.comboCapaOrigenLeyenda.currentText() == u'Selecciona una entitat' and self.dlg.tabWidget_Origen.currentIndex() == 1:
+            errors.append(u'No hi ha cap capa d\'origen seleccionada')
+        if self.dlg.comboCapaDesti.currentText() == u''and self.dlg.tabWidget_Destino.currentIndex() == 0:
             errors.append(u'No hi ha cap capa de destí disponible')
-        if self.dlg.comboCapaDesti.currentText() == u'Selecciona una entitat':
+        if self.dlg.comboCapaDesti.currentText() == u'Selecciona una entitat'and self.dlg.tabWidget_Destino.currentIndex() == 0:
+            errors.append(u'No hi ha cap capa de destí seleccionada')
+        if self.dlg.comboCapaDestiLeyenda.currentText() == u''and self.dlg.tabWidget_Destino.currentIndex() == 1:
+            errors.append(u'No hi ha cap capa de destí disponible')
+        if self.dlg.comboCapaDestiLeyenda.currentText() == u'Selecciona una entitat'and self.dlg.tabWidget_Destino.currentIndex() == 1:
             errors.append(u'No hi ha cap capa de destí seleccionada')
         if self.dlg.txt_nomTaula.text() == u'':
             errors.append(u'No hi ha nom per la taula de destí')
@@ -594,7 +638,7 @@ class GeneradorTrajectes:
             self.eliminaTaulesCalcul(Fitxer)
             self.dlg.setEnabled(True)
             return
-            
+        '''    
         if self.dlg.comboCapaOrigen.currentText() != 'dintreilla':
             select = 'select "id" as "idInici" from "public"."'+self.dlg.comboCapaOrigen.currentText()+'" order by 1;'
         else:
@@ -613,7 +657,7 @@ class GeneradorTrajectes:
             self.eliminaTaulesCalcul(Fitxer)
             self.dlg.setEnabled(True)
             return
-            
+        '''
             
             
         '''Cálculo local'''
@@ -623,21 +667,37 @@ class GeneradorTrajectes:
                 uri.setConnection(host1,port1,nomBD1,usuari1,contra1)
             except:
                 print ("Error a la connexio")
-                
-            QApplication.processEvents()
-            sql_origen = 'SELECT * FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
-            QApplication.processEvents()
-            uri.setDataSource("","("+sql_origen+")","geom","","id")
-            QApplication.processEvents()
-            start_lyr = QgsVectorLayer(uri.uri(False), "origen", "postgres")
-            QApplication.processEvents()
-            
-            sql_desti = 'SELECT * FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
-            QApplication.processEvents()
-            uri.setDataSource("","("+sql_desti+")","geom","","id")
-            QApplication.processEvents()
-            end_lyr = QgsVectorLayer(uri.uri(False), "desti", "postgres")
-            QApplication.processEvents()
+
+            layers = QgsProject.instance().mapLayers().values()
+
+            if self.dlg.tabWidget_Origen.currentIndex() == 0:
+                QApplication.processEvents()
+                sql_origen = 'SELECT * FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
+                QApplication.processEvents()
+                uri.setDataSource("","("+sql_origen+")","geom","","id")
+                QApplication.processEvents()
+                start_lyr = QgsVectorLayer(uri.uri(False), "origen", "postgres")
+                QApplication.processEvents()
+            else:
+                for layer in layers:
+                    # print(*layer.fields())
+                    if layer.name() == self.dlg.comboCapaDestiLeyenda.currentText():
+                        start_lyr = layer
+                        break
+
+            if self.dlg.tabWidget_Destino.currentIndex() == 0:
+                sql_desti = 'SELECT * FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
+                QApplication.processEvents()
+                uri.setDataSource("","("+sql_desti+")","geom","","id")
+                QApplication.processEvents()
+                end_lyr = QgsVectorLayer(uri.uri(False), "desti", "postgres")
+                QApplication.processEvents()
+            else:
+                for layer in layers:
+                    # print(*layer.fields())
+                    if layer.name() == self.dlg.comboCapaOrigenLeyenda.currentText():
+                        end_lyr = layer
+                        break
             
             sql_xarxa='SELECT * FROM "public".\"'+self.dlg.comboGraf.currentText()+'\"'
             QApplication.processEvents()
@@ -645,7 +705,9 @@ class GeneradorTrajectes:
             QApplication.processEvents()
             network_lyr = QgsVectorLayer(uri.uri(False), "xarxa", "postgres")
             QApplication.processEvents()
-            
+
+
+
             
             
             crs=start_lyr.sourceCrs()
@@ -698,8 +760,6 @@ class GeneradorTrajectes:
                 for f in itfeature:
                     listVlayers[ultimoIndex].changeAttributeValue(f.id(),self.getIndexNom(listVlayers[ultimoIndex]),feature[self.getIndexNom(start_lyr)])
                 listVlayers[ultimoIndex].commitChanges()
-            
-                
 
             
             '''Unificación de todos los resultados en una única lista'''
@@ -709,8 +769,7 @@ class GeneradorTrajectes:
                 for feature in features:
                     listFeaturesAllVlayers.append(feature)
             
-            
-            
+
             '''Ordenación del resultado en función de su nombre y coste'''
             textBox += u'Ordenant resultat...\n'
             self.dlg.text_info.setText(textBox)

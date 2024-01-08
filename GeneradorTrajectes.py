@@ -78,7 +78,7 @@ from _operator import itemgetter
 Variables globals per a la connexio
 i per guardar el color dels botons
 """
-Versio_modul="V_Q3.211105"
+Versio_modul="V_Q3.211203"
 micolorArea = None
 micolor = None
 nomBD1=""
@@ -130,8 +130,6 @@ class GeneradorTrajectes:
         self.dlg.bt_inici.clicked.connect(self.on_click_Inici)
         self.dlg.comboConnexio.currentIndexChanged.connect(self.on_Change_ComboConn)
         self.dlg.comboCost.currentIndexChanged.connect(self.changeComboCost)
-        self.dlg.bt_ReloadLeyendaOrigen.clicked.connect(self.cerca_elements_Leyenda)
-        self.dlg.bt_ReloadLeyendaDestino.clicked.connect(self.cerca_elements_Leyenda)
 
 
         # Declare instance attributes
@@ -303,7 +301,7 @@ class GeneradorTrajectes:
                 combo.setCurrentIndex(0)
         combo.blockSignals (False)
 
-    def ompleCombos(self, combo, llista, predef, sort, leyenda=False):
+    def ompleCombos(self, combo, llista, predef, sort):
         """Aquesta funció omple els combos que li passem per paràmetres"""
         combo.blockSignals (True)
         combo.clear()
@@ -311,15 +309,9 @@ class GeneradorTrajectes:
         predefInList = None
         for elem in llista:
             try:
-                if not leyenda:
-                    item = QStandardItem(unicode(elem[0]))
-                else:
-                    item = QStandardItem(unicode(elem))
+                item = QStandardItem(unicode(elem[0]))
             except TypeError:
-                if not leyenda:
-                    item = QStandardItem(str(elem[0]))
-                else:
-                    item = QStandardItem(str(elem))
+                item = QStandardItem(str(elem[0]))
             model.appendRow(item)
             if elem == predef:
                 predefInList = elem
@@ -355,7 +347,6 @@ class GeneradorTrajectes:
         self.dlg.progressBar.setValue(0)
         self.dlg.chk_Local.setChecked(True)
         self.dlg.chk_Local.setEnabled(False)
-        self.cerca_elements_Leyenda()
 
         
     
@@ -369,7 +360,8 @@ class GeneradorTrajectes:
             self.dlg.chk_Local.setChecked(True)
         else:
             self.dlg.chk_CostNusos.setEnabled(True)
-            self.dlg.chk_Local.setChecked(False)
+            #self.dlg.chk_Local.setChecked(False)
+            self.dlg.chk_Local.setChecked(True)
             
     def getLimit(self):
         '''
@@ -388,34 +380,7 @@ class GeneradorTrajectes:
             return vect[0][0]
         else:
             return limitUsuari
-
-    def cerca_elements_Leyenda(self):
-        try:  # Accedir als elements de la llegenda que siguin de tipus punt.
-            auxOrigen = []
-            auxDesti = []
-            layers = QgsProject.instance().mapLayers().values()
-            for layer in layers:
-                #print(*layer.fields())
-                if layer.type() == QgsMapLayer.VectorLayer:
-                    if layer.wkbType() == QgsWkbTypes.Point:
-                        auxOrigen.append(layer.name())
-                        for field in layer.fields():
-                            if field.name()[0:3] == "Nom":
-                                auxDesti.append(layer.name())
-                                break
-
-            self.ompleCombos(self.dlg.comboCapaOrigenLeyenda, auxOrigen, 'Selecciona una entitat', True, True)
-
-            self.ompleCombos(self.dlg.comboCapaDestiLeyenda, auxDesti, 'Selecciona una entitat', True, True)
-        except Exception as ex:
-            missatge = "Error al afegir els elements de la llegenda"
-            print(missatge)
-            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-            message = template.format(type(ex).__name__, ex.args)
-            print(message)
-            QMessageBox.information(None, "Error", missatge)
-            return
-
+    
     def on_Change_ComboGraf(self, state):
         """
         En el moment en que es modifica la opcio escollida 
@@ -450,21 +415,13 @@ class GeneradorTrajectes:
         errors = []
         if self.dlg.comboConnexio.currentText() == u'Selecciona connexió':
             errors.append(u"No hi ha connexió")
-        if self.dlg.comboCapaOrigen.currentText() == u'' and self.dlg.tabWidget_Origen.currentIndex() == 0:
+        if self.dlg.comboCapaOrigen.currentText() == u'':
             errors.append(u'No hi ha cap capa d\'origen disponible')
-        if self.dlg.comboCapaOrigen.currentText() == u'Selecciona una entitat' and self.dlg.tabWidget_Origen.currentIndex() == 0:
+        if self.dlg.comboCapaOrigen.currentText() == u'Selecciona una entitat':
             errors.append(u'No hi ha cap capa d\'origen seleccionada')
-        if self.dlg.comboCapaOrigenLeyenda.currentText() == u'' and self.dlg.tabWidget_Origen.currentIndex() == 1:
-            errors.append(u'No hi ha cap capa d\'origen disponible')
-        if self.dlg.comboCapaOrigenLeyenda.currentText() == u'Selecciona una entitat' and self.dlg.tabWidget_Origen.currentIndex() == 1:
-            errors.append(u'No hi ha cap capa d\'origen seleccionada')
-        if self.dlg.comboCapaDesti.currentText() == u''and self.dlg.tabWidget_Destino.currentIndex() == 0:
+        if self.dlg.comboCapaDesti.currentText() == u'':
             errors.append(u'No hi ha cap capa de destí disponible')
-        if self.dlg.comboCapaDesti.currentText() == u'Selecciona una entitat'and self.dlg.tabWidget_Destino.currentIndex() == 0:
-            errors.append(u'No hi ha cap capa de destí seleccionada')
-        if self.dlg.comboCapaDestiLeyenda.currentText() == u''and self.dlg.tabWidget_Destino.currentIndex() == 1:
-            errors.append(u'No hi ha cap capa de destí disponible')
-        if self.dlg.comboCapaDestiLeyenda.currentText() == u'Selecciona una entitat'and self.dlg.tabWidget_Destino.currentIndex() == 1:
+        if self.dlg.comboCapaDesti.currentText() == u'Selecciona una entitat':
             errors.append(u'No hi ha cap capa de destí seleccionada')
         if self.dlg.txt_nomTaula.text() == u'':
             errors.append(u'No hi ha nom per la taula de destí')
@@ -475,25 +432,357 @@ class GeneradorTrajectes:
         return errors
     
     
-    def calculo_Local(self,network_lyr,uri2,start_point,end_lyr):
+    def calculo_Local(self,network_lyr,uri2,start_point,end_lyr,temps):
         #processing.algorithmHelp("native:shortestpathpointtolayer")
-        parameters= {'INPUT':network_lyr,
-                     'STRATEGY':0, 
-                     'DIRECTION_FIELD': '',
-                     'VALUE_FORWARD': '',
-                     'VALUE_BACKWARD': '',
-                     'VALUE_BOTH': '',
-                     'DEFAULT_DIRECTION':2,
-                     'SPEED_FIELD': '',
-                     'DEFAULT_SPEED':1,
-                     'TOLERANCE':0,
-                     'START_POINT':start_point,
-                     'END_POINTS':end_lyr,
-                     'OUTPUT':'memory:'}
-        
+        if temps :
+            
+            parameters= {'INPUT':network_lyr,
+                        'STRATEGY':1, 
+                        'DIRECTION_FIELD': '',
+                        'VALUE_FORWARD': '',
+                        'VALUE_BACKWARD': '',
+                        'VALUE_BOTH': '',
+                        'DEFAULT_DIRECTION':2,
+                        'SPEED_FIELD': 'VEL_KMH',
+                        'DEFAULT_SPEED':4,
+                        'TOLERANCE':0,
+                        'START_POINT':start_point,
+                        'END_POINTS':end_lyr,
+                        'OUTPUT':'memory:'}
+        else:
+            parameters= {'INPUT':network_lyr,
+                        'STRATEGY':0, 
+                        'DIRECTION_FIELD': '',
+                        'VALUE_FORWARD': '',
+                        'VALUE_BACKWARD': '',
+                        'VALUE_BOTH': '',
+                        'DEFAULT_DIRECTION':2,
+                        'SPEED_FIELD': '',
+                        'DEFAULT_SPEED':1,
+                        'TOLERANCE':0,
+                        'START_POINT':start_point,
+                        'END_POINTS':end_lyr,
+                        'OUTPUT':'memory:'}
+
         resultado = processing.run('native:shortestpathpointtolayer',parameters)
+        if temps :
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'cost',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"cost\"*60',
+                'INPUT': resultado['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            resultat_temps = processing.run('qgis:fieldcalculator', alg_params)
+            return resultat_temps['OUTPUT']
+        else:
+            return resultado['OUTPUT']
+
+    def Calcula_VEL_KMH(self,xarxa,crs,uri):
+         # Invertir dirección de línea
+        alg_params = {
+        'INPUT': xarxa,
+        'OUTPUT': 'memory:'
+        }
+        outputs={}
+        outputs['InvertirDireccinDeLnea'] = processing.run('native:reverselinedirection', alg_params)
+        
+        if (self.dlg.chk_CostInvers.isChecked()):
+
+            # VEL_PS=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': outputs['InvertirDireccinDeLnea']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps0'] = processing.run('qgis:fieldcalculator', alg_params)
     
-        return resultado['OUTPUT']
+            # VEL_PS_INV=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': xarxa,
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps_inv0'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_INV
+            '''
+            ### Km/h
+            alg_params = {
+                    'FIELD_LENGTH': 10,
+                    'FIELD_NAME': 'VEL_KMH',
+                    'FIELD_PRECISION': 9,
+                    'FIELD_TYPE': 0,
+                    'FORMULA': '\"VELOCITAT_PS_INV\"*60/1000',
+                    'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                    'NEW_FIELD': False,
+                    'OUTPUT': 'memory:'
+            }
+            '''
+            ### m/min
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"VELOCITAT_PS_INV\"',
+                'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_inv'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_DIREC
+            '''
+            ### Km/h
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            '''
+
+            ### m/min
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_direc'] = processing.run('qgis:fieldcalculator', alg_params)
+                    
+        else:
+            # VEL_PS=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': outputs['InvertirDireccinDeLnea']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps0'] = processing.run('qgis:fieldcalculator', alg_params)
+    
+            # VEL_PS_INV=0
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VELOCITAT_PS_INV',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '0*0',
+                'INPUT': xarxa,
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Vel_ps_inv0'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_INV
+            '''
+            ### Km/h
+
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"VELOCITAT_PS\"*60/1000',
+                'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            '''
+            ### m/min
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '\"VELOCITAT_PS\"',
+                'INPUT': outputs['Vel_ps0']['OUTPUT'],
+                'NEW_FIELD': False,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_inv'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+            # CREACIO_VEL_KMH_DIREC
+            '''
+            ### Km/h
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS*60/1000',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            '''
+            ### m/min
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'VEL_KMH',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': 'VELOCITAT_PS',
+                'INPUT': outputs['Vel_ps_inv0']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Creacio_vel_kmh_direc'] = processing.run('qgis:fieldcalculator', alg_params)
+        
+        # Unir capas vectoriales
+        alg_params = {
+            'CRS': QgsCoordinateReferenceSystem('EPSG:'+str(crs)),
+            'LAYERS': [outputs['Creacio_vel_kmh_direc']['OUTPUT'],outputs['Creacio_vel_kmh_inv']['OUTPUT']],
+            'OUTPUT': 'memory:'
+        }
+        outputs['UnirCapasVectoriales'] = processing.run('native:mergevectorlayers', alg_params)
+    
+        # DIRECCIO
+        alg_params = {
+            'FIELD_LENGTH': 10,
+            'FIELD_NAME': 'DIRECCIO',
+            'FIELD_PRECISION': 3,
+            'FIELD_TYPE': 2,
+            'FORMULA': '\'D\'',
+            'INPUT': outputs['UnirCapasVectoriales']['OUTPUT'],
+            'NEW_FIELD': True,
+            'OUTPUT': 'memory:'
+        }
+        outputs['Direccio'] = processing.run('qgis:fieldcalculator', alg_params)
+
+        if (self.dlg.chk_CostNusos.isChecked()):
+            # CREACIO_L_TRAM_TEMP
+            alg_params = {
+                'FIELD_LENGTH': 10,
+                'FIELD_NAME': 'L_TRAM_TEMP',
+                'FIELD_PRECISION': 9,
+                'FIELD_TYPE': 0,
+                'FORMULA': '$length',
+                'INPUT': outputs['Direccio']['OUTPUT'],
+                'NEW_FIELD': True,
+                'OUTPUT': 'memory:'
+            }
+            outputs['Direccio'] = processing.run('qgis:fieldcalculator', alg_params)        
+        return outputs['Direccio']['OUTPUT']
+
+    def calcul_graf3(self,sql_origen,sql_desti,sql_xarxa,uri2):
+        #               *****************************************************************************************************************
+        #               INICI CARREGA DE LES ILLES, PARCELES O PORTALS QUE QUEDEN AFECTATS PEL BUFFER DEL GRAF 
+        #               *****************************************************************************************************************
+        #                uri.setDataSource("","("+sql_total+")","geom","","id")
+        QApplication.processEvents()
+        uri2.setDataSource("","("+sql_origen+")","geom","","id")
+        QApplication.processEvents()
+        origens_lyr = QgsVectorLayer(uri2.uri(False), "punts", "postgres")
+        QApplication.processEvents()
+        uri2.setDataSource("","("+sql_desti+")","geom","","id")
+        QApplication.processEvents()
+        destins_lyr = QgsVectorLayer(uri2.uri(False), "desti", "postgres")
+        QApplication.processEvents()
+        uri2.setDataSource("","("+sql_xarxa+")","the_geom","","id")
+        QApplication.processEvents()
+        network_lyr = QgsVectorLayer(uri2.uri(False), "xarxa", "postgres")
+        QApplication.processEvents()
+        #if (punts_lyr.isValid() and network_lyr.isValid()):
+        #************************************************************************************
+        #************************************************************************************
+        outputs = {}
+        outputs2 = {}
+        epsg = network_lyr.crs().postgisSrid()
+        
+        alg_params = {
+            'INPUT': origens_lyr,
+            'OPERATION': '',
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:'+str(epsg)),
+            'OUTPUT': 'memory:'
+        }
+        outputs['ReproyectarCapa'] = processing.run('native:reprojectlayer', alg_params)
+        
+        #p_lyr = punts_lyr 
+        orig_lyr = outputs['ReproyectarCapa']['OUTPUT']
+
+        '''
+        alg_params = {
+            'INPUT': destins_lyr,
+            'OPERATION': '',
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:'+str(epsg)),
+            'OUTPUT': 'memory:'
+        }
+        outputs2['ReproyectarCapa'] = processing.run('native:reprojectlayer', alg_params)
+        
+
+        #p_lyr = punts_lyr 
+        desti_lyr = outputs2['ReproyectarCapa']['OUTPUT']
+        '''
+        graf = network_lyr
+        
+        l_lyr=self.Calcula_VEL_KMH(graf,epsg,uri2)
+        QgsProject.instance().addMapLayer(l_lyr)
+        
+        
+        '''
+        INPUT: Capa vectorial que representa la red
+        STRATEGY: Tipo de ruta a calcular
+        DIRECTION_FIELD: Campo de sentido
+        VALUE_FORWARD: Valor para sentido de avance
+        VALUE_BACKWARD: Valor para dirección hacia atrás
+        VALUE_BOTH: Valor para ambas direcciones
+        DEFAULT_DIRECTION: Dirección predeterminada
+        SPEED_FIELD: Campo de velocidad
+        DEFAULT_SPEED: Velocidad predeterminada (km/h)
+        TOLERANCE: Tolerancia de topología
+        START_POINTS: Capa vectorial con puntos de inicio
+        END_POINT: Punto final
+        OUTPUT: Ruta más corta        
+        '''
+        alg_params = {
+            'DEFAULT_DIRECTION': 0,
+            'DEFAULT_SPEED': 50,
+            'DIRECTION_FIELD': 'DIRECCIO',
+            'INPUT':l_lyr,
+            'SPEED_FIELD': 'VEL_KMH',
+            'START_POINTS': orig_lyr,
+            #'END_POINT': desti_lyr,
+            'END_POINT': "453873,4598019",
+            'STRATEGY': 1,
+            'TOLERANCE': 0.1,
+            'VALUE_BACKWARD': '',
+            'VALUE_BOTH': '',
+            'VALUE_FORWARD': 'D',
+            'OUTPUT':'memory:'
+        }
+        outputs['camins'] = processing.run('qgis:shortestpathlayertopoint', alg_params)
+        QgsProject.instance().addMapLayer(outputs['camins']['OUTPUT'])
+
+
+        return l_lyr
+          
     
     def getIndexNom(self,vlayer):
         fields = vlayer.fields()
@@ -638,7 +927,7 @@ class GeneradorTrajectes:
             self.eliminaTaulesCalcul(Fitxer)
             self.dlg.setEnabled(True)
             return
-        '''    
+            
         if self.dlg.comboCapaOrigen.currentText() != 'dintreilla':
             select = 'select "id" as "idInici" from "public"."'+self.dlg.comboCapaOrigen.currentText()+'" order by 1;'
         else:
@@ -657,9 +946,37 @@ class GeneradorTrajectes:
             self.eliminaTaulesCalcul(Fitxer)
             self.dlg.setEnabled(True)
             return
+            
+        #############################################################
+        ##  calcul local temps
+        #############################################################
         '''
-            
-            
+        print (self.dlg.chk_Local.isChecked())
+        print (self.dlg.comboCost.currentText())
+        if ((self.dlg.chk_Local.isChecked()) and (self.dlg.comboCost.currentText() == 'Temps')):
+            print ("A dins")
+            uri = QgsDataSourceUri()
+            try:
+                uri.setConnection(host1,port1,nomBD1,usuari1,contra1)
+            except:
+                print ("Error a la connexio")
+                
+            QApplication.processEvents()            
+            sql_xarxa='SELECT * FROM "public".\"'+self.dlg.comboGraf.currentText()+'\"'
+            sql_desti = 'SELECT * FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
+            #sql_desti = 'SELECT ST_X(geom), ST_Y(geom) FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
+            sql_origen = 'SELECT * FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
+            #sql_origen = 'SELECT ST_X(geom), ST_Y(geom) FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
+            QApplication.processEvents()
+
+            graf_resultat=self.calcul_graf3(sql_origen,sql_desti,sql_xarxa,uri)
+            return
+        print("no ha entrat")
+        '''
+        #############################################################
+        ##  fi calcul local temps
+        #############################################################
+        
         '''Cálculo local'''
         if(self.dlg.chk_Local.isChecked()):
             uri = QgsDataSourceUri()
@@ -667,37 +984,21 @@ class GeneradorTrajectes:
                 uri.setConnection(host1,port1,nomBD1,usuari1,contra1)
             except:
                 print ("Error a la connexio")
-
-            layers = QgsProject.instance().mapLayers().values()
-
-            if self.dlg.tabWidget_Origen.currentIndex() == 0:
-                QApplication.processEvents()
-                sql_origen = 'SELECT * FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
-                QApplication.processEvents()
-                uri.setDataSource("","("+sql_origen+")","geom","","id")
-                QApplication.processEvents()
-                start_lyr = QgsVectorLayer(uri.uri(False), "origen", "postgres")
-                QApplication.processEvents()
-            else:
-                for layer in layers:
-                    # print(*layer.fields())
-                    if layer.name() == self.dlg.comboCapaDestiLeyenda.currentText():
-                        start_lyr = layer
-                        break
-
-            if self.dlg.tabWidget_Destino.currentIndex() == 0:
-                sql_desti = 'SELECT * FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
-                QApplication.processEvents()
-                uri.setDataSource("","("+sql_desti+")","geom","","id")
-                QApplication.processEvents()
-                end_lyr = QgsVectorLayer(uri.uri(False), "desti", "postgres")
-                QApplication.processEvents()
-            else:
-                for layer in layers:
-                    # print(*layer.fields())
-                    if layer.name() == self.dlg.comboCapaOrigenLeyenda.currentText():
-                        end_lyr = layer
-                        break
+                
+            QApplication.processEvents()
+            sql_origen = 'SELECT * FROM "public".\"' + self.dlg.comboCapaDesti.currentText() + '\"'
+            QApplication.processEvents()
+            uri.setDataSource("","("+sql_origen+")","geom","","id")
+            QApplication.processEvents()
+            start_lyr = QgsVectorLayer(uri.uri(False), "origen", "postgres")
+            QApplication.processEvents()
+            
+            sql_desti = 'SELECT * FROM "public".\"' + self.dlg.comboCapaOrigen.currentText() + '\"'
+            QApplication.processEvents()
+            uri.setDataSource("","("+sql_desti+")","geom","","id")
+            QApplication.processEvents()
+            end_lyr = QgsVectorLayer(uri.uri(False), "desti", "postgres")
+            QApplication.processEvents()
             
             sql_xarxa='SELECT * FROM "public".\"'+self.dlg.comboGraf.currentText()+'\"'
             QApplication.processEvents()
@@ -705,9 +1006,7 @@ class GeneradorTrajectes:
             QApplication.processEvents()
             network_lyr = QgsVectorLayer(uri.uri(False), "xarxa", "postgres")
             QApplication.processEvents()
-
-
-
+            
             
             
             crs=start_lyr.sourceCrs()
@@ -729,6 +1028,14 @@ class GeneradorTrajectes:
 
             incremento = 45/start_lyr.featureCount()
             x=0
+            if self.dlg.comboCost.currentText() == 'Temps':
+                temps=True
+            else:
+                temps=False
+            epsg = network_lyr.crs().postgisSrid()
+            l_lyr=self.Calcula_VEL_KMH(network_lyr,epsg,uri)
+            #QgsProject.instance().addMapLayer(l_lyr)
+            
             for feature in features:
                 Hora=datetime.datetime.now().strftime("%H:%M:%S:%f")
                 textBox += u'CAMÍ Nº ' + str(x+1) + u': ' + Hora + u'\n'
@@ -749,7 +1056,7 @@ class GeneradorTrajectes:
                 #print("Point: "+coordenadas)
                 QApplication.processEvents()
 
-                listVlayers.append(self.calculo_Local(network_lyr, uri, referencedPoint, end_lyr))
+                listVlayers.append(self.calculo_Local(network_lyr, uri, referencedPoint, end_lyr,temps))
                 
                 ultimoIndex = len(listVlayers)-1
                 
@@ -760,6 +1067,8 @@ class GeneradorTrajectes:
                 for f in itfeature:
                     listVlayers[ultimoIndex].changeAttributeValue(f.id(),self.getIndexNom(listVlayers[ultimoIndex]),feature[self.getIndexNom(start_lyr)])
                 listVlayers[ultimoIndex].commitChanges()
+            
+                
 
             
             '''Unificación de todos los resultados en una única lista'''
@@ -769,7 +1078,8 @@ class GeneradorTrajectes:
                 for feature in features:
                     listFeaturesAllVlayers.append(feature)
             
-
+            
+            
             '''Ordenación del resultado en función de su nombre y coste'''
             textBox += u'Ordenant resultat...\n'
             self.dlg.text_info.setText(textBox)
@@ -862,6 +1172,8 @@ class GeneradorTrajectes:
                     QApplication.processEvents()
                 pr.addFeatures(list_feat)
                 LayerCamins.commitChanges()
+                #QgsProject.instance().addMapLayer(LayerCamins)
+
                 drop = 'DROP TABLE IF EXISTS "GTT".\"'+self.dlg.txt_nomTaula.text()+'\";'
                 try:
                     cur.execute(drop)
